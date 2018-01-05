@@ -3,11 +3,14 @@ export default {
     functional: true,
     props: {
         render: Function,
-        node: Object
+        data: Object,
+        node: Array
     },
     render: (h, ctx) => {
         const params = {
-            node: ctx.props.node
+            root: ctx.props.node[0],
+            node: ctx.props.node[1],
+            data: ctx.props.data
         };
         return ctx.props.render(h, params);
     }

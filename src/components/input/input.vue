@@ -9,6 +9,7 @@
             <input
                 :id="elementId"
                 :autocomplete="autocomplete"
+                :spellcheck="spellcheck"
                 ref="input"
                 :type="type"
                 :class="inputClasses"
@@ -34,6 +35,7 @@
             v-else
             :id="elementId"
             :autocomplete="autocomplete"
+            :spellcheck="spellcheck"
             ref="textarea"
             :class="textareaClasses"
             :style="textareaStyles"
@@ -68,7 +70,7 @@
         props: {
             type: {
                 validator (value) {
-                    return oneOf(value, ['text', 'textarea', 'password']);
+                    return oneOf(value, ['text', 'textarea', 'password', 'url', 'email', 'date']);
                 },
                 default: 'text'
             },
@@ -113,6 +115,10 @@
                 default: false
             },
             autofocus: {
+                type: Boolean,
+                default: false
+            },
+            spellcheck: {
                 type: Boolean,
                 default: false
             },

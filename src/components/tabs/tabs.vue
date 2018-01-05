@@ -3,7 +3,7 @@
         <div :class="[prefixCls + '-bar']">
             <div :class="[prefixCls + '-nav-right']" v-if="showSlot"><slot name="extra"></slot></div>
             <div :class="[prefixCls + '-nav-container']">
-                <div ref="navWrap" :class="[prefixCls + '-nav-wrap', scrollable ? prefixCls + '-nav-scrollable' : '']" >
+                <div ref="navWrap" :class="[prefixCls + '-nav-wrap', scrollable ? prefixCls + '-nav-scrollable' : '']">
                     <span :class="[prefixCls + '-nav-prev', scrollable ? '' : prefixCls + '-nav-scroll-disabled']" @click="scrollPrev"><Icon type="chevron-left"></Icon></span>
                     <span :class="[prefixCls + '-nav-next', scrollable ? '' : prefixCls + '-nav-scroll-disabled']" @click="scrollNext"><Icon type="chevron-right"></Icon></span>
                     <div ref="navScroll" :class="[prefixCls + '-nav-scroll']">
@@ -26,7 +26,7 @@
 <script>
     import Icon from '../icon/icon.vue';
     import Render from '../base/render';
-    import { oneOf } from '../../utils/assist';
+    import { oneOf, MutationObserver } from '../../utils/assist';
     import Emitter from '../../mixins/emitter';
     import elementResizeDetectorMaker from 'element-resize-detector';
 
@@ -155,6 +155,7 @@
             updateBar () {
                 this.$nextTick(() => {
                     const index = this.navList.findIndex((nav) => nav.name === this.activeKey);
+                    if (!this.$refs.nav) return;  // 页面销毁时，这里会报错，为了解决 #2100
                     const prevTabs = this.$refs.nav.querySelectorAll(`.${prefixCls}-tab`);
                     const tab = prevTabs[index];
                     this.barWidth = tab ? parseFloat(tab.offsetWidth) : 0;
@@ -238,8 +239,8 @@
                 if (!currentOffset) return;
 
                 let newOffset = currentOffset > containerWidth
-                ? currentOffset - containerWidth
-                : 0;
+                    ? currentOffset - containerWidth
+                    : 0;
 
                 this.setOffset(newOffset);
             },
@@ -250,16 +251,16 @@
                 if (navWidth - currentOffset <= containerWidth) return;
 
                 let newOffset = navWidth - currentOffset > containerWidth * 2
-                ? currentOffset + containerWidth
-                : (navWidth - containerWidth);
+                    ? currentOffset + containerWidth
+                    : (navWidth - containerWidth);
 
                 this.setOffset(newOffset);
             },
             getCurrentScrollOffset() {
                 const { navStyle } = this;
                 return navStyle.transform
-                ? Number(navStyle.transform.match(/translateX\(-(\d+(\.\d+)*)px\)/)[1])
-                : 0;
+                    ? Number(navStyle.transform.match(/translateX\(-(\d+(\.\d+)*)px\)/)[1])
+                    : 0;
             },
             setOffset(value) {
                 this.navStyle.transform = `translateX(-${value}px)`;
@@ -309,6 +310,16 @@
             },
             handleResize(){
                 this.updateNavScroll();
+            },
+            isInsideHiddenElement () {
+                let parentNode = this.$el.parentNode;
+                while(parentNode && parentNode !== document.body) {
+                    if (parentNode.style && parentNode.style.display === 'none') {
+                        return parentNode;
+                    }
+                    parentNode = parentNode.parentNode;
+                }
+                return false;
             }
         },
         watch: {
@@ -328,9 +339,22 @@
             this.showSlot = this.$slots.extra !== undefined;
             this.observer = elementResizeDetectorMaker();
             this.observer.listenTo(this.$refs.navWrap, this.handleResize);
+
+            const hiddenParentNode = this.isInsideHiddenElement();
+            if (hiddenParentNode) {
+                this.mutationObserver = new MutationObserver(() => {
+                    if (hiddenParentNode.style.display !== 'none') {
+                        this.updateBar();
+                        this.mutationObserver.disconnect();
+                    }
+                });
+
+                this.mutationObserver.observe(hiddenParentNode, { attributes: true, childList: true, characterData: true, attributeFilter: ['style'] });
+            }
         },
         beforeDestroy() {
             this.observer.removeListener(this.$refs.navWrap, this.handleResize);
+            if (this.mutationObserver) this.mutationObserver.disconnect();
         }
     };
 </script>
